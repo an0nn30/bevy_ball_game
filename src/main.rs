@@ -1,3 +1,4 @@
+use bevy::asset::Asset;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use rand::random;
@@ -7,6 +8,9 @@ pub const PLAYER_SPEED: f32 = 500.0;
 pub const ENEMY_SPEED: f32 = 200.0;
 pub const ENEMY_SIZE: f32 = 64.0;
 pub const NUM_ENEMIES: usize = 4;
+pub const NUM_STARS: usize = 10;
+
+pub const STAR_SIZE: f32 = 30.0;
 
 fn main() {
     App::new()
@@ -14,12 +18,14 @@ fn main() {
         .add_startup_system(spawn_player)
         .add_startup_system(spawn_enemies)
         .add_startup_system(spawn_camera)
+        .add_startup_system(spawn_stars)
         .add_system(player_movement)
         .add_system(enemy_movement)
         .add_system(update_enemy_direction)
         .add_system(confine_player_movement)
         .add_system(confine_enemy_movement)
         .add_system(enemy_hit_player)
+        .add_system(player_hit_star)
         .run();
 }
 
@@ -37,6 +43,10 @@ pub struct Player {}
 pub struct Enemy {
     pub direction: Vec2,
 }
+
+#[derive(Component)]
+pub struct Star {}
+
 pub fn spawn_player(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
@@ -185,17 +195,17 @@ pub fn update_enemy_direction(
         }
 
         // Play SFX
-        if direction_changed {
-            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
-            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
-
-            let sound_effect = if random::<f32>() > 0.5 {
-                sound_effect_1
-            } else {
-                sound_effect_2
-            };
-            audio.play(sound_effect);
-        }
+        // if direction_changed {
+        //     let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
+        //     let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+        //
+        //     let sound_effect = if random::<f32>() > 0.5 {
+        //         sound_effect_1
+        //     } else {
+        //         sound_effect_2
+        //     };
+        //     audio.play(sound_effect);
+        // }
 
     }
 }
@@ -251,5 +261,44 @@ pub fn enemy_hit_player(
                 commands.entity(player_entity).despawn();
             }
         }
+    }
+}
+
+pub fn player_hit_star(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    star_query: Query<(Entity, &Transform), With<Star>>,
+    audio: Res<Audio>,
+    asset_server: Res<AssetServer>
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        for (star_entity, star_transform) in star_query.iter() {
+            let distance = player_transform.translation.distance(star_transform.translation);
+
+            if distance < PLAYER_SIZE / 2.0 + STAR_SIZE / 2.0 {
+                println!("Player hit a star!");
+                commands.entity(star_entity).despawn();
+            }
+        }
+    }
+}
+
+pub fn spawn_stars(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>
+) {
+    let window = window_query.get_single().unwrap();
+    for _ in 0..NUM_STARS {
+        let rand_x = rand::random::<f32>() * window.width();
+        let rand_y = rand::random::<f32>() * window.height();
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(rand_x, rand_y, 0.0),
+                texture: asset_server.load("sprites/star.png"),
+                ..default()
+            },
+            Star {},
+        ));
     }
 }
