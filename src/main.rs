@@ -18,6 +18,7 @@ fn main() {
         .add_system(enemy_movement)
         .add_system(update_enemy_direction)
         .add_system(confine_player_movement)
+        .add_system(confine_enemy_movement)
         .run();
 }
 
@@ -157,6 +158,8 @@ pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &Enemy)>, time: Re
 pub fn update_enemy_direction(
     mut enemy_query: Query<(&Transform, &mut Enemy)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    audio: Res<Audio>,
+    asset_server: Res<AssetServer>
 ) {
     let window = window_query.get_single().unwrap();
 
@@ -167,13 +170,62 @@ pub fn update_enemy_direction(
     let y_max = window.height() - half_enemy_size;
 
     for (transform, mut enemy) in enemy_query.iter_mut() {
+        let mut direction_changed = false;
+
+
         let translation = transform.translation;
         if translation.x < x_min || translation.x > x_max {
             enemy.direction.x *= -1.0;
+            direction_changed = true;
         }
         if translation.y < y_min || translation.y > y_max {
             enemy.direction.y *= -1.0;
+            direction_changed = true;
         }
 
+        // Play SFX
+        if direction_changed {
+            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
+            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+
+            let sound_effect = if random::<f32>() > 0.5 {
+                sound_effect_1
+            } else {
+                sound_effect_2
+            };
+            audio.play(sound_effect);
+        }
+
+    }
+}
+
+pub fn confine_enemy_movement(
+    mut enemy_query: Query<&mut Transform, With<Enemy>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+    if let Ok(mut enemy_transform) = enemy_query.get_single_mut() {
+        let window = window_query.get_single().unwrap();
+
+        let half_player_size = PLAYER_SIZE / 2.0;
+        let x_min = 0.0 + half_player_size;
+        let x_max = window.width() - half_player_size;
+        let y_min = 0.0 + half_player_size;
+        let y_max = window.height() - half_player_size;
+
+        let mut translation = enemy_transform.translation;
+
+        if translation.x < x_min {
+            translation.x = x_min;
+        } else if translation.x > x_max {
+            translation.x = x_max;
+        }
+
+        if translation.y < y_min {
+            translation.y = y_min;
+        } else if translation.y > y_max {
+            translation.y = y_max;
+        }
+
+        enemy_transform.translation = translation;
     }
 }
