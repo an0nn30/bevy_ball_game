@@ -1,4 +1,3 @@
-use bevy::asset::Asset;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use rand::random;
@@ -15,6 +14,7 @@ pub const STAR_SIZE: f32 = 30.0;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .init_resource::<Score>()
         .add_startup_system(spawn_player)
         .add_startup_system(spawn_enemies)
         .add_startup_system(spawn_camera)
@@ -26,6 +26,7 @@ fn main() {
         .add_system(confine_enemy_movement)
         .add_system(enemy_hit_player)
         .add_system(player_hit_star)
+        .add_system(update_score)
         .run();
 }
 
@@ -46,6 +47,16 @@ pub struct Enemy {
 
 #[derive(Component)]
 pub struct Star {}
+#[derive(Resource)]
+pub struct Score {
+    pub value: u32,
+}
+
+impl Default for Score {
+    fn default() -> Score {
+        Score { value: 0 }
+    }
+}
 
 pub fn spawn_player(
     mut commands: Commands,
@@ -170,7 +181,7 @@ pub fn update_enemy_direction(
     mut enemy_query: Query<(&Transform, &mut Enemy)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     audio: Res<Audio>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
 ) {
     let window = window_query.get_single().unwrap();
 
@@ -182,7 +193,6 @@ pub fn update_enemy_direction(
 
     for (transform, mut enemy) in enemy_query.iter_mut() {
         let mut direction_changed = false;
-
 
         let translation = transform.translation;
         if translation.x < x_min || translation.x > x_max {
@@ -206,7 +216,6 @@ pub fn update_enemy_direction(
         //     };
         //     audio.play(sound_effect);
         // }
-
     }
 }
 
@@ -246,11 +255,13 @@ pub fn enemy_hit_player(
     mut player_query: Query<(Entity, &Transform), With<Player>>,
     enemy_query: Query<&Transform, With<Enemy>>,
     audio: Res<Audio>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
 ) {
     if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
         for enemy_transform in enemy_query.iter() {
-            let distance = player_transform.translation.distance(enemy_transform.translation);
+            let distance = player_transform
+                .translation
+                .distance(enemy_transform.translation);
             let player_radius = PLAYER_SIZE / 2.0;
             let enemy_radius = ENEMY_SIZE / 2.0;
 
@@ -269,13 +280,17 @@ pub fn player_hit_star(
     player_query: Query<&Transform, With<Player>>,
     star_query: Query<(Entity, &Transform), With<Star>>,
     audio: Res<Audio>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
+    mut score: ResMut<Score>,
 ) {
     if let Ok(player_transform) = player_query.get_single() {
         for (star_entity, star_transform) in star_query.iter() {
-            let distance = player_transform.translation.distance(star_transform.translation);
+            let distance = player_transform
+                .translation
+                .distance(star_transform.translation);
 
             if distance < PLAYER_SIZE / 2.0 + STAR_SIZE / 2.0 {
+                score.value += 1;
                 println!("Player hit a star!");
                 commands.entity(star_entity).despawn();
             }
@@ -286,7 +301,7 @@ pub fn player_hit_star(
 pub fn spawn_stars(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
 ) {
     let window = window_query.get_single().unwrap();
     for _ in 0..NUM_STARS {
@@ -300,5 +315,11 @@ pub fn spawn_stars(
             },
             Star {},
         ));
+    }
+}
+
+pub fn update_score(score: Res<Score>) {
+    if score.is_changed() {
+        println!("Score: {}", score.value);
     }
 }
