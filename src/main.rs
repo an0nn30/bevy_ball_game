@@ -11,10 +11,13 @@ pub const NUM_STARS: usize = 10;
 
 pub const STAR_SIZE: f32 = 30.0;
 
+pub const STAR_SPAWN_TIME: f32 = 1.0;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .init_resource::<Score>()
+        .init_resource::<StarSpawnTimer>()
         .add_startup_system(spawn_player)
         .add_startup_system(spawn_enemies)
         .add_startup_system(spawn_camera)
@@ -27,6 +30,8 @@ fn main() {
         .add_system(enemy_hit_player)
         .add_system(player_hit_star)
         .add_system(update_score)
+        .add_system(tick_star_spawn_timer)
+        .add_system(spawn_stars_over_time)
         .run();
 }
 
@@ -52,9 +57,20 @@ pub struct Score {
     pub value: u32,
 }
 
+#[derive(Resource)]
+pub struct StarSpawnTimer {
+    pub timer: Timer,
+}
+
 impl Default for Score {
     fn default() -> Score {
         Score { value: 0 }
+    }
+}
+
+impl Default for StarSpawnTimer {
+    fn default() -> StarSpawnTimer {
+        StarSpawnTimer { timer: Timer::from_seconds(STAR_SPAWN_TIME, TimerMode::Repeating)}
     }
 }
 
@@ -321,5 +337,34 @@ pub fn spawn_stars(
 pub fn update_score(score: Res<Score>) {
     if score.is_changed() {
         println!("Score: {}", score.value);
+    }
+}
+
+pub fn tick_star_spawn_timer(
+    mut star_spawn_timer: ResMut<StarSpawnTimer>,
+    time: Res<Time>
+) {
+    star_spawn_timer.timer.tick(time.delta());
+}
+
+pub fn spawn_stars_over_time(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    star_spawn_timer: Res<StarSpawnTimer>
+) {
+    if star_spawn_timer.timer.finished() {
+        let window = window_query.get_single().unwrap();
+        let rand_x = random::<f32>() * window.width();
+        let rand_y = random::<f32>() * window.height();
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(rand_x, rand_y, 0.0),
+                texture: asset_server.load("sprites/star.png"),
+                ..default()
+            },
+            Star {},
+        ));
     }
 }
