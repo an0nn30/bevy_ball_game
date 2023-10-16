@@ -24,6 +24,7 @@ impl Plugin for PlayerPlugin {
                     confine_player_movement.in_set(ConfinementSystemSet),
                     enemy_hit_player,
                     player_hit_star,
+                    player_hit_heart,
                 )
                     .in_set(OnUpdate(AppState::Game))
                     .in_set(OnUpdate(SimulationState::Running)),

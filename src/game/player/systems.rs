@@ -5,6 +5,8 @@ use super::components::Player;
 use crate::events::GameOver;
 use crate::game::enemy::components::Enemy;
 use crate::game::enemy::ENEMY_SIZE;
+use crate::game::heart::components::Heart;
+use crate::game::heart::HEART_SIZE;
 use crate::game::score::resources::Score;
 use crate::game::star::components::Star;
 use crate::game::star::STAR_SIZE;
@@ -133,6 +135,31 @@ pub fn player_hit_star(
 
             if distance < PLAYER_SIZE / 2.0 + STAR_SIZE / 2.0 {
                 println!("Player hit star!");
+                score.value += 1;
+                let sound_effect = asset_server.load("audio/laserLarge_000.ogg");
+                audio.play(sound_effect);
+                commands.entity(star_entity).despawn();
+            }
+        }
+    }
+}
+
+pub fn player_hit_heart(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    heart_query: Query<(Entity, &Transform), With<Heart>>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
+    mut score: ResMut<Score>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        for (star_entity, star_transform) in heart_query.iter() {
+            let distance = player_transform
+                .translation
+                .distance(star_transform.translation);
+
+            if distance < PLAYER_SIZE / 2.0 + HEART_SIZE / 2.0 {
+                println!("Player hit heart!");
                 score.value += 1;
                 let sound_effect = asset_server.load("audio/laserLarge_000.ogg");
                 audio.play(sound_effect);
