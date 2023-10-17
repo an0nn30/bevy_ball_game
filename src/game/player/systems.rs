@@ -4,15 +4,16 @@ use rand::random;
 
 use super::components::Player;
 use crate::events::GameOver;
+use crate::game::cherry::components::Cherry;
+use crate::game::cherry::CHERRY_SIZE;
 use crate::game::enemy::components::Enemy;
 use crate::game::enemy::ENEMY_SIZE;
-use crate::game::heart::components::Heart;
-use crate::game::heart::HEART_SIZE;
 use crate::game::player::resources::GodModeTimer;
 use crate::game::player::PlayerState;
 use crate::game::score::resources::Score;
 use crate::game::star::components::Star;
 use crate::game::star::STAR_SIZE;
+use crate::game::SimulationState;
 
 pub const PLAYER_SPEED: f32 = 500.0;
 pub const PLAYER_SIZE: f32 = 64.0; // This is the player sprite size.
@@ -117,6 +118,7 @@ pub fn enemy_hit_player(
                     println!("Player was in God mode, despawning enemy");
                     commands.entity(enemy_entity).despawn();
                 } else {
+                    commands.insert_resource(NextState(Some(SimulationState::Paused)));
                     println!("Enemy hit player! Game Over!");
                     let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
                     audio.play(sound_effect);
@@ -153,26 +155,26 @@ pub fn player_hit_star(
     }
 }
 
-pub fn player_hit_heart(
+pub fn player_hit_cherry(
     mut commands: Commands,
     player_query: Query<&Transform, With<Player>>,
-    heart_query: Query<(Entity, &Transform), With<Heart>>,
+    cherry_query: Query<(Entity, &Transform), With<Cherry>>,
     asset_server: Res<AssetServer>,
     player_state: Res<State<PlayerState>>,
     audio: Res<Audio>,
     mut score: ResMut<Score>,
 ) {
     if let Ok(player_transform) = player_query.get_single() {
-        for (star_entity, star_transform) in heart_query.iter() {
+        for (star_entity, star_transform) in cherry_query.iter() {
             let distance = player_transform
                 .translation
                 .distance(star_transform.translation);
 
-            if distance < PLAYER_SIZE / 2.0 + HEART_SIZE / 2.0 {
+            if distance < PLAYER_SIZE / 2.0 + CHERRY_SIZE / 2.0 {
                 if player_state.0 == PlayerState::Normal {
                     commands.insert_resource(NextState(Some(PlayerState::God)));
                 }
-                println!("Player hit heart! GOD MODE ACTIVATED");
+                println!("Player hit cherry! GOD MODE ACTIVATED");
                 score.value += 1;
                 let sound_effect = asset_server.load("audio/laserLarge_000.ogg");
                 audio.play(sound_effect);

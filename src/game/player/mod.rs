@@ -29,7 +29,7 @@ impl Plugin for PlayerPlugin {
                     confine_player_movement.in_set(ConfinementSystemSet),
                     enemy_hit_player,
                     player_hit_star,
-                    player_hit_heart,
+                    player_hit_cherry,
                     toggle_god_mode_timer,
                 )
                     .in_set(OnUpdate(AppState::Game))
