@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
+use rand::random;
 
 use super::components::Player;
 use crate::events::GameOver;
@@ -7,6 +8,8 @@ use crate::game::enemy::components::Enemy;
 use crate::game::enemy::ENEMY_SIZE;
 use crate::game::heart::components::Heart;
 use crate::game::heart::HEART_SIZE;
+use crate::game::player::resources::GodModeTimer;
+use crate::game::player::PlayerState;
 use crate::game::score::resources::Score;
 use crate::game::star::components::Star;
 use crate::game::star::STAR_SIZE;
@@ -96,24 +99,30 @@ pub fn enemy_hit_player(
     mut commands: Commands,
     mut game_over_event_writer: EventWriter<GameOver>,
     mut player_query: Query<(Entity, &Transform), With<Player>>,
-    enemy_query: Query<&Transform, With<Enemy>>,
+    mut enemy_query: Query<(Entity, &Transform), With<Enemy>>,
     asset_server: Res<AssetServer>,
+    player_state: Res<State<PlayerState>>,
     audio: Res<Audio>,
     score: Res<Score>,
 ) {
     if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
-        for enemy_transform in enemy_query.iter() {
+        for (enemy_entity, enemy_transform) in enemy_query.iter() {
             let distance = player_transform
                 .translation
                 .distance(enemy_transform.translation);
             let player_radius = PLAYER_SIZE / 2.0;
             let enemy_radius = ENEMY_SIZE / 2.0;
             if distance < player_radius + enemy_radius {
-                println!("Enemy hit player! Game Over!");
-                let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
-                audio.play(sound_effect);
-                commands.entity(player_entity).despawn();
-                game_over_event_writer.send(GameOver { score: score.value });
+                if player_state.0 == PlayerState::God {
+                    println!("Player was in God mode, despawning enemy");
+                    commands.entity(enemy_entity).despawn();
+                } else {
+                    println!("Enemy hit player! Game Over!");
+                    let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
+                    audio.play(sound_effect);
+                    commands.entity(player_entity).despawn();
+                    game_over_event_writer.send(GameOver { score: score.value });
+                }
             }
         }
     }
@@ -149,6 +158,7 @@ pub fn player_hit_heart(
     player_query: Query<&Transform, With<Player>>,
     heart_query: Query<(Entity, &Transform), With<Heart>>,
     asset_server: Res<AssetServer>,
+    player_state: Res<State<PlayerState>>,
     audio: Res<Audio>,
     mut score: ResMut<Score>,
 ) {
@@ -159,7 +169,10 @@ pub fn player_hit_heart(
                 .distance(star_transform.translation);
 
             if distance < PLAYER_SIZE / 2.0 + HEART_SIZE / 2.0 {
-                println!("Player hit heart!");
+                if player_state.0 == PlayerState::Normal {
+                    commands.insert_resource(NextState(Some(PlayerState::God)));
+                }
+                println!("Player hit heart! GOD MODE ACTIVATED");
                 score.value += 1;
                 let sound_effect = asset_server.load("audio/laserLarge_000.ogg");
                 audio.play(sound_effect);
@@ -167,4 +180,19 @@ pub fn player_hit_heart(
             }
         }
     }
+}
+
+pub fn toggle_god_mode_timer(
+    mut commands: Commands,
+    god_mode_timer: Res<GodModeTimer>,
+    player_state: Res<State<PlayerState>>,
+) {
+    if god_mode_timer.timer.finished() && player_state.0 == PlayerState::God {
+        println!("GOD MODE DEACTIVATED");
+        commands.insert_resource(NextState(Some(PlayerState::Normal)));
+    }
+}
+
+pub fn tick_god_mode_timer(mut god_mode_timer: ResMut<GodModeTimer>, time: Res<Time>) {
+    god_mode_timer.timer.tick(time.delta());
 }

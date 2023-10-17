@@ -27,8 +27,8 @@ pub fn spawn_hearts(
     }
 }
 
-pub fn tick_heart_spawn_timer(mut star_spawn_timer: ResMut<HeartSpawnTimer>, time: Res<Time>) {
-    star_spawn_timer.timer.tick(time.delta());
+pub fn tick_heart_spawn_timer(mut heart_spawn_timer: ResMut<HeartSpawnTimer>, time: Res<Time>) {
+    heart_spawn_timer.timer.tick(time.delta());
 }
 
 pub fn spawn_hearts_over_time(
@@ -36,6 +36,7 @@ pub fn spawn_hearts_over_time(
     window_query: Query<&Window, With<PrimaryWindow>>,
     asset_server: Res<AssetServer>,
     star_spawn_timer: Res<HeartSpawnTimer>,
+    hearts_query: Query<Entity, With<Heart>>,
 ) {
     if star_spawn_timer.timer.finished() {
         let window = window_query.get_single().unwrap();
