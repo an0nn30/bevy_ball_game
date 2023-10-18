@@ -4,9 +4,11 @@ mod player;
 pub mod score;
 pub mod star;
 mod systems;
+mod ui;
 
 use crate::events::GameOver;
 use crate::game::cherry::CherryPlugin;
+use crate::game::ui::GameUIPlugin;
 use crate::AppState;
 use bevy::prelude::*;
 use enemy::EnemyPlugin;
@@ -26,6 +28,7 @@ impl Plugin for GamePlugin {
             .add_plugin(ScorePlugin)
             .add_plugin(StarPlugin)
             .add_plugin(CherryPlugin)
+            .add_plugin(GameUIPlugin)
             .add_system(toggle_simulation.run_if(in_state(AppState::Game)));
     }
 }
